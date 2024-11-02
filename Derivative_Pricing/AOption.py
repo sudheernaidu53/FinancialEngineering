@@ -1,14 +1,21 @@
 """American Option"""
 from binomialPricing import (
-    BinomialOptionPricing,
-    plt,
-    np,
+    BinomialOptionModel,
+
 )
 
-class AmericanOptionBinomial(BinomialOptionPricing):
+from trinomialPricing import TrinomialOptionModel
+
+class AmericanMixin:
     def optionPriceAtNode(self, step, d_index, ):
         opt_price = super().optionPriceAtNode(step, d_index)
         return max(opt_price, self._payoff(self.underlying_price[step, d_index]))
+
+class AmericanOptionBinomial(AmericanMixin, BinomialOptionModel):
+    pass
+
+class AmericanOptionTrinomial(AmericanMixin, TrinomialOptionModel):
+    pass
 
 if __name__ == "__main__":
     # a = AmericanOptionBinomial(45, 5, 5, 45, 0., 'call', 1.2, 1/1.2)
