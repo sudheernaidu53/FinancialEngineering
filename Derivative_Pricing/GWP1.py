@@ -3,7 +3,7 @@ import pandas as pd
 from AOption import AmericanOptionBinomial, AmericanOptionTrinomial
 from treePricing import TreeOptionDependenceOnFactor
 from EOption import EuropeanOptionBinomial, EuropeanOptionTrinomial
-# import numpy as np
+import numpy as np
 # import matplotlib.pyplot as plt
 
 
@@ -123,10 +123,10 @@ class GWP1:
     def vegaOfCallAndPut(self, klass=EuropeanOptionBinomial):
         """
         Question 7 of GWP1.
-        Delta measures one sensitivity of the option price. 
-        But there are other important sensitivities we will look at throughout the course. 
+        Delta measures one sensitivity of the option price.
+        But there are other important sensitivities we will look at throughout the course.
         An important one is the sensitivity of the option price to the underlying volatility (vega)..
-        a. Compute the sensitivity of previous put and call option prices to a 5% increase in volatility (from 20% to 25%). 
+        a. Compute the sensitivity of previous put and call option prices to a 5% increase in volatility (from 20% to 25%).
         How do prices change with respect to the change in volatility?
         b. Comment on the potential differential impact of this change for call and put options
         :return:
@@ -168,6 +168,47 @@ class GWP1:
                    )
         print("Vega of call and put options respectively are {:,.2f} and {:,.2f}".format(vega, p_vega))
 
+    @docstringDecorator
+    def BinomialDeltaHedging(self, klass=EuropeanOptionBinomial, steps = 3):
+        """
+        25.Dynamic Delta Hedging. Use the following data: S0=180, r =2%, sigma=25%, T=6
+        months, K = 182:
+        a. Price a European Put option with the previous characteristics using a
+        3-step binomial tree (you do not need code for this).
+        b. Pick one path in the tree.
+        i. Describe the Delta hedging process (how many units of the
+        underlying you buy/sell, …) of that path throughout each step if you
+        act as the seller of the Put option.
+        ii. Make sure you include a table with how your cash account varies at
+        each step (you can follow the format in the slides from Lesson 3 in
+        Module 1). Also, assume you can buy fractions of the underlying
+        asset shares.
+        :return:
+        """
+        # the one in the lesson notes
+        # option = klass(
+        #     S0=100, strike=90, time=2, rate=0.0, up = 1.2, down = 0.8, option_type="call",
+        #     steps=2
+        # )
+        # path = "du"
+
+        option = klass(
+            S0=180, strike=182, time=0.5, rate=0.02, sigma=0.25, option_type="put",
+            steps=steps, #yax_align="index"
+        )
+        if steps==3:
+            path = "ddu"
+        elif steps==25:
+            path = 'uududduudududdudddduddudu'
+        option.calculateOptionPrice()
+        option.fillDeltaGrid()
+        option.visualizeAllGrids()
+        print(np.round(option.deltas, 2))
+        df = option.getAPath(path)
+        print(df)
+        print(option.explainDeltaHedging(df))
+
+
 
 if __name__ == "__main__":
     gwp1 = GWP1()
@@ -191,3 +232,7 @@ if __name__ == "__main__":
     #Q17, 18
     gwp1.strikeVariation(klass=AmericanOptionTrinomial, option_type="call")
     gwp1.strikeVariation(klass=AmericanOptionTrinomial, option_type="put")
+
+    # Q25, 26
+    gwp1.BinomialDeltaHedging(klass=EuropeanOptionBinomial, steps=3)
+    gwp1.BinomialDeltaHedging(klass=AmericanOptionBinomial, steps=25)

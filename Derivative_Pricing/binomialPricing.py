@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+
 # from enum import Enum, unique
 from treePricing import AbstractTreeOptionModel, TreeOptionDependenceOnFactor
-# import pandas as pd
 
 
 # import matplotlib
@@ -12,6 +13,78 @@ class BinomialOptionModel(AbstractTreeOptionModel):  # AmericanOptionBinomial
     def __init__(self, strike, steps, time, S0, rate, option_type, up=None, down=None, sigma=None, yax_align="y"):
         self.down = down
         super().__init__(strike, steps, time, S0, rate, option_type, up=up, sigma=sigma, yax_align=yax_align)
+
+    def getAPath(self, path):
+        assert len(path) == self.steps
+        current_node = (0, 0)
+        option_prices = [self.option_prices[current_node]]
+        underlying_prices = [self.underlying_price[current_node]]
+        deltas = [self.deltas[current_node]]
+
+        for i, p in enumerate(path):
+            if p == "u":
+                current_node = (current_node[0] + 1, current_node[1] + 1)
+            elif p == "d":
+                current_node = (current_node[0] + 1, current_node[1])
+            else:
+                raise ValueError
+            option_prices.append(self.option_prices[current_node])
+            underlying_prices.append(self.underlying_price[current_node])
+            if i < len(path) - 1:
+                deltas.append(self.deltas[current_node])
+            else:
+                deltas.append(0.0)
+
+        return pd.DataFrame({
+            "time": list(range(self.steps + 1)),
+            "option_price": option_prices,
+            "underlying_price": underlying_prices,
+            "delta": deltas,
+            "previous step": [np.nan] + list(path)
+        })
+
+    def explainDeltaHedging(self, df):
+
+        # df = {
+        #     "time": [0, 1, 2, 3],
+        #     "option_price": [13.82, 22.41, 34.63, 19.46],
+        #     "underlying_price": [180.00, 162.54, 146.77, 162.54],
+        #     "delta": [-0.47, -0.74, -1.00, 0.00],
+        #     "previous step": ["", "d", "d", "u"],
+        # }
+        cash_accounts = []  # [-row['delta'] * row["underlying_price"]]
+        stock_portfolios = []  # [row['delta'] * row["underlying_price"]]
+        discounted_cash_accounts = []
+
+        for i, row in df.iterrows():
+
+            if i == 0:
+                # Initial stock portfolio
+                stock_portfolio = row['delta'] * row["underlying_price"]
+                # Initial cash account from selling delta shares
+                cash_account = -stock_portfolio
+            elif i == len(df) - 1:
+                # Final Step
+                # Stock is just prev delta*curr stock price
+                stock_portfolio = df.iloc[i - 1]['delta'] * row["underlying_price"]
+                # Cash account is stock portfolio - option price (option buyer will take the payoff)
+                cash_account = stock_portfolio - row["option_price"]
+            else:
+                # Adjust cash account by adding the new delta change in stock * stock price
+                delta_change = df.iloc[i - 1]['delta'] - row['delta']
+                cash_account = delta_change * row["underlying_price"]
+                # stock portfolio is just previous stock portfolio - current cashflow
+                stock_portfolio = stock_portfolios[-1] - cash_account
+            stock_portfolios.append(stock_portfolio)
+            cash_accounts.append(cash_account)
+
+        df['Stock Portfolio'] = stock_portfolios
+        df['Cash Account'] = cash_accounts
+        df['Discounted Cash Account'] = df["Cash Account"] * (-self.discount**df["time"])
+
+        print("Sum of Discounted Cash Accounts: {:,.2f} and the T0 option price: {:,.2f}".format(
+            df["Discounted Cash Account"].sum(), df.loc[0]["option_price"]))
+        return df
 
     def resetGrids(self):
         """It should be fine to not reset before you change a parameter and recalculate... as the calculation is done top down.
@@ -56,7 +129,7 @@ class BinomialOptionModel(AbstractTreeOptionModel):  # AmericanOptionBinomial
         """Except for the terminal nodes"""
         T1Up = self.option_prices[step + 1, d_index + 1]
         T1Down = self.option_prices[step + 1, d_index]
-        opt_price = self.discount * ( self.risk_neutral_prob * T1Up + (1 - self.risk_neutral_prob) * T1Down)
+        opt_price = self.discount * (self.risk_neutral_prob * T1Up + (1 - self.risk_neutral_prob) * T1Down)
         return opt_price
 
     def fillOptionPricesRemaining(self):
@@ -65,7 +138,7 @@ class BinomialOptionModel(AbstractTreeOptionModel):  # AmericanOptionBinomial
                 self.option_prices[step, i] = self.optionPriceAtNode(step, i)
 
     def fillDeltaGrid(self):
-        """ delta is defined as  (up option price - down option price)/ (up underlying price- down underlying price)"""
+        """ delta is defined as  (up option price - down option price)/ (up underlying_prices- down underlying_prices)"""
         for step in range(self.steps - 1, -1, -1):
             for i in range(step + 1):
                 self.deltas[step, i] = (self.option_prices[step + 1, i + 1] - self.option_prices[step + 1, i]) / (
@@ -86,12 +159,12 @@ class BinomialOptionModel(AbstractTreeOptionModel):  # AmericanOptionBinomial
                 ax.text(x, y, f'{grid[x, k]:.2f}',
                         ha='center', va='bottom', color='blue', fontsize=8)
                 if x < len_:
-                    y_up = y + 1 if self.yax_align == "index" else grid[x + 1, k + 2]
-                    y_down = y - 1 if self.yax_align == "index" else grid[x + 1, k]
+                    y_up = (y + 1) if self.yax_align == "index" else grid[x + 1, k + 1]
+                    y_down = (y - 1) if self.yax_align == "index" else grid[x + 1, k]
                     ax.plot([x, x + 1], [y, y_up], 'g--', lw=0.5)
                     ax.plot([x, x + 1], [y, y_down], 'r--', lw=0.5)
 
-        ax.set_title("Binomial Tree for grid" + label or "")
+        ax.set_title("Binomial Tree for " + label or "")
         ax.set_xlabel("Time Steps")
         ax.set_ylabel("Price")
         ax.grid()
