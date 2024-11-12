@@ -1,13 +1,20 @@
 """European option"""
 from binomialPricing import BinomialOptionModel
 from trinomialPricing import TrinomialOptionModel
-
+from closedForm import ClosedFormPricing
+from MonteCarlo import MonteCarloPricing
 
 class EuropeanOptionBinomial(BinomialOptionModel):
     pass
 
 
 class EuropeanOptionTrinomial(TrinomialOptionModel):
+    pass
+
+class EuropeanOptionBS(ClosedFormPricing):
+    pass
+
+class EuropeanOptionMC(MonteCarloPricing):
     pass
 
 
