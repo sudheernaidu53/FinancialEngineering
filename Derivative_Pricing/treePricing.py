@@ -2,8 +2,9 @@ import numpy as np
 from abc import abstractmethod, ABC
 import pandas as pd
 import matplotlib.pyplot as plt
+from mixins import  OptionMixin
 
-class AbstractTreeOptionModel(ABC):
+class AbstractTreeOptionModel(ABC, OptionMixin):
     def __init__(self, strike, steps, time, S0, rate, option_type, up=None, sigma=None, yax_align="y"):
         """
 
@@ -30,6 +31,7 @@ class AbstractTreeOptionModel(ABC):
         self.setDeltaT()
         self.setDiscount()
         self._initUpDown()
+        self._validateOptionType()
 
     def setDiscount(self):
         self.discount = np.exp(-self.rate * self.delta_t)
@@ -48,13 +50,6 @@ class AbstractTreeOptionModel(ABC):
     def fillOptionPricesAtExpiry(self):
         for i in range(len(self.underlying_price[self.steps])): #self.steps
             self.option_prices[self.steps, i] = self._payoff(self.underlying_price[self.steps, i])
-
-    def _payoff(self, stock_price, strike=None):
-        if self.option_type == 'call':
-            return max(0, stock_price - self.strike)
-        elif self.option_type == 'put':
-            return max(0, self.strike - stock_price)
-        raise ValueError("option_type must be 'call' or 'put'")
 
     def setAttribute(self, attrib, value):
         if not hasattr(self, attrib):
