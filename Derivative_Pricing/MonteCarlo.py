@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from Derivative_Pricing.neeharika_gwp2 import sigma
 from closedForm import ClosedFormPricing
 import numpy.random as npr
 from scipy.stats import norm
@@ -85,17 +84,19 @@ class EuropeanOptionMonteCarlo(MonteCarloPricing):
 
 class AmericanOptionMonteCarlo(MonteCarloPricing):
     def __init__(self, strike, time, S0, rate, option_type, sigma, expiry, nb_iters=100000, nb_steps=50):
-        super().__init__(strike, time, S0, rate, option_type, sigma, expiry, nb_iters)
         self.nb_steps = nb_steps
+        super().__init__(strike, time, S0, rate, option_type, sigma, expiry, nb_iters)
+
 
     def initDependencies(self):
+        super().initDependencies()
         self.dt = self.time_to_maturity / self.nb_steps  # Time step
         self.discount_factor = np.exp(-self.rate * self.dt)
         self.vol = self.sigma * np.sqrt(self.dt)
         self.S = None
         self.payoff = None
 
-    def simulatePaths(self):
+    def simulatedStockPrices(self):
         if self.S is not None:
             return self.S
         self.S = np.zeros((self.nb_steps + 1, self.nb_iters))
@@ -112,7 +113,7 @@ class AmericanOptionMonteCarlo(MonteCarloPricing):
             return np.maximum(K - S, 0)
 
     def americanOptionPayoff(self, S=None):
-        S = S or self.S
+        S = self.simulatedStockPrices() if S is None else S
         if self.payoff is not None:
             return self.payoff
         self.payoff = np.zeros_like(S)
@@ -128,8 +129,7 @@ class AmericanOptionMonteCarlo(MonteCarloPricing):
         return self.payoff[0]
 
     def price(self):
-        S = self.simulatePaths()
-        t0_price_vector = self.americanOptionPayoff(S)
+        t0_price_vector = self.americanOptionPayoff()
         return np.mean(t0_price_vector)
 
 
@@ -197,3 +197,11 @@ if __name__ == "__main__":
     mc_convergence = MonteCarloConvergence(95, 0, 100, 0.06, "call", 0.3, 1, range(1, 100000, 500))
     mc_convergence.plot(overlay_closed_form=True)
     print(mc_convergence.toleranceAchievement())
+
+    american_option = AmericanOptionMonteCarlo(95, 0, 100, 0.06, "call", 0.3, nb_steps=1000, expiry=1, nb_iters=100000)
+    print(american_option.price())
+
+    american_option_convergence = MonteCarloConvergence(95, 0, 100, 0.06, "call", 0.3, 1, range(1, 100000, 500),
+                                                       klass=AmericanOptionMonteCarlo)
+    american_option_convergence.plot(overlay_closed_form=True)
+    print(american_option_convergence.toleranceAchievement())
