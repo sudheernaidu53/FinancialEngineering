@@ -112,7 +112,16 @@ class AmericanOptionMonteCarlo(MonteCarloPricing):
         elif self.option_type == "put":
             return np.maximum(K - S, 0)
 
-    def americanOptionPayoff(self, S=None):
+    def __SimplePayoff(self, S=None):
+        """don't use. has bugs.
+        treats each path as independent.
+        value on a path as of some date is max(discounted value of next day payoff, exercise value)
+        Above will lead to a bug? say the intrinsic values are [4,2,1,0] the code will exercise on all time steps but the last. this shouldn't be a bug.
+        1. The continuation value is the expected payoff if the option is held, not just at the next step, but across all possible future paths from that point onward.
+        2. it should be the conditional expectation of the future payoff, given the stock price at the current step.
+        3. Stock price paths do not linearly correspond to future payoffs. For instance, when a call option is deep out of the money, the future payoff is likely zero regardless of slight changes in the stock price.
+        4. By fitting to multiple paths' payoffs at later steps, the regression approximates a broader future scenario for each stock price level, providing a better decision criterion for early exercise.
+        """
         S = self.simulatedStockPrices() if S is None else S
         if self.payoff is not None:
             return self.payoff
@@ -125,14 +134,45 @@ class AmericanOptionMonteCarlo(MonteCarloPricing):
             continuation_value = self.discount_factor * self.payoff[t + 1]  # discount self.payoff value to present.
 
             # max of exercise and continuation value.
+            # print(t, sum(exercise_value > continuation_value))
             self.payoff[t] = np.where(exercise_value > continuation_value, exercise_value, continuation_value)
         return self.payoff[0]
 
+    def longstaffSchwartzPayoff(self, S=None):
+        if self.payoff is not None:
+            return self.payoff
+        S = self.simulatedStockPrices() if S is None else S
+
+        payoffs = self._payoff(S[-1], self.strike)
+        cashflows = payoffs.copy()
+
+        for t in range(self.nb_steps - 1, -1, -1):
+            # in-the-money paths
+            in_the_money = S[t] < self.strike if (self.option_type == "put") else S[t] > self.strike
+            in_the_money_paths = np.where(in_the_money)[0]
+            # print("in the money paths for time step ", t, ":", in_the_money_paths)
+
+            # regression
+            X = S[ t, in_the_money_paths]
+            Y = self.discount_factor* cashflows[in_the_money_paths]
+
+            if len(X) > 0:
+                regression = np.polyfit(X, Y, 2)
+                continuation_value = np.polyval(regression, X)
+
+                intrinsic_value = self._payoff(X, self.strike)
+                exercise = intrinsic_value > continuation_value
+
+                cashflows[in_the_money_paths[exercise]] = intrinsic_value[exercise]
+
+            cashflows = self.discount_factor*cashflows
+
+        self.payoff = cashflows
+        return self.payoff
+
     def price(self):
-        t0_price_vector = self.americanOptionPayoff()
+        t0_price_vector = self.longstaffSchwartzPayoff()
         return np.mean(t0_price_vector)
-
-
 
 
 class MonteCarloConvergence:
@@ -187,16 +227,15 @@ class MonteCarloConvergence:
                 return nb_iters
 
 
-
-
 if __name__ == "__main__":
+    MonteCarlo.setSeed(42)
     mc = MonteCarloPricing(95, 0, 100, 0.06, "call", 0.3, 1)
 
     print(mc.price())
 
-    mc_convergence = MonteCarloConvergence(95, 0, 100, 0.06, "call", 0.3, 1, range(1, 100000, 500))
-    mc_convergence.plot(overlay_closed_form=True)
-    print(mc_convergence.toleranceAchievement())
+    # mc_convergence = MonteCarloConvergence(95, 0, 100, 0.06, "call", 0.3, 1, range(1, 100000, 500))
+    # mc_convergence.plot(overlay_closed_form=True)
+    # print(mc_convergence.toleranceAchievement())
 
     american_option = AmericanOptionMonteCarlo(95, 0, 100, 0.06, "call", 0.3, nb_steps=1000, expiry=1, nb_iters=100000)
     print(american_option.price())
