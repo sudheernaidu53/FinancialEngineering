@@ -6,10 +6,11 @@ from EOption import EuropeanOptionBinomial, EuropeanOptionTrinomial
 import numpy as np
 # import matplotlib.pyplot as plt
 
-
+PRINT_DOC_STRING = False
 def docstringDecorator(func):
     def wrapper(*args, **kwargs):
-        print(func.__doc__)
+        if PRINT_DOC_STRING:
+            print(func.__doc__)
         return func(*args, **kwargs)
 
     return wrapper
@@ -88,10 +89,11 @@ class GWP1:
             steps=self.steps
         )
 
-        option.calculateOptionPrice()
-        poption.calculateOptionPrice()
+        call_price = option.calculateOptionPrice()
+        put_price = poption.calculateOptionPrice()
         print(
             "Call price is {:,.2f} and put price is {:,.2f}".format(option.getOptionPrice(), poption.getOptionPrice()))
+        return call_price, put_price
 
 
     @docstringDecorator
@@ -118,6 +120,7 @@ class GWP1:
         poption.calculateOptionPrice()
         poption.fillDeltaGrid()
         print("Delta of {} put option is {:,.2f}".format(klass.__name__, poption.getT0Delta()))
+        return option.getT0Delta(), poption.getT0Delta()
 
     @docstringDecorator
     def vegaOfCallAndPut(self, klass=EuropeanOptionBinomial):
@@ -167,6 +170,7 @@ class GWP1:
                    # engine="openpyxl"
                    )
         print("Vega of call and put options respectively are {:,.2f} and {:,.2f}".format(vega, p_vega))
+        return vega, p_vega
 
     @docstringDecorator
     def BinomialDeltaHedging(self, klass=EuropeanOptionBinomial, steps = 3):

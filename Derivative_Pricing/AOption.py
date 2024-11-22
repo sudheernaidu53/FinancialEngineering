@@ -20,7 +20,7 @@ class AmericanOptionBinomial(AmericanMixin, BinomialOptionModel):
 class AmericanOptionTrinomial(AmericanMixin, TrinomialOptionModel):
     pass
 
-class AmericanOptionMonteCarlo(MonteCarloPricing):
+class AmericanOptionMC(MonteCarloPricing):
     def __init__(self, strike, time, S0, rate, option_type, sigma, expiry, nb_iters=100000, nb_steps=50):
         self.nb_steps = nb_steps
         super().__init__(strike, time, S0, rate, option_type, sigma, expiry, nb_iters)
@@ -107,6 +107,16 @@ class AmericanOptionMonteCarlo(MonteCarloPricing):
         t0_price_vector = self.longstaffSchwartzPayoff()
         return np.mean(t0_price_vector)
 
+    def vega(self, epsilon=0.02, multiplicative=True):
+        """There seems to be a bug in generic vega.. TODO.
+        so manually calculate vega"""
+        up_val = (self.sigma * (1 + epsilon)) if multiplicative else (self.sigma + epsilon)
+        down_val = (self.sigma * (1 - epsilon)) if multiplicative else (self.sigma - epsilon)
+
+        option_up = self.__class__(self.strike, self.time, self.S0, self.rate, self.option_type, up_val, self.expiry)
+        option_down = self.__class__(self.strike, self.time, self.S0, self.rate, self.option_type, down_val, self.expiry)
+
+        return (option_up.price() - option_down.price()) / (up_val - down_val)
 
 if __name__ == "__main__":
     # a = AmericanOptionBinomial(45, 5, 5, 45, 0., 'call', 1.2, 1/1.2)

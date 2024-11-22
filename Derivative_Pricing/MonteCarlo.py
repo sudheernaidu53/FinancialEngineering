@@ -1,5 +1,3 @@
-from cProfile import label
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -60,34 +58,37 @@ class MonteCarloPricing(MonteCarlo):
     def reset(self):
         self.initDependencies()
 
-    def firstOrder(self, attrib, epsilon=0.1, multiplicative=True):
+    def firstOrder(self, attrib, epsilon=0.02, multiplicative=True):
 
         original_val = getattr(self, attrib)
         if multiplicative:
             assert original_val, "original value cannot be zero if the mode is multiplicative"
+        up_val = (original_val * (1 + epsilon)) if multiplicative else (original_val + epsilon)
+        down_val = (original_val * (1 - epsilon)) if multiplicative else (original_val - epsilon)
         self.reset()
 
-        setattr(self, attrib, (original_val * (1 + epsilon)) if multiplicative else (original_val + epsilon))
+        setattr(self, attrib, up_val)
         price_up = self.price()
 
-        setattr(self, attrib, (original_val * (1 - epsilon)) if multiplicative else (original_val - epsilon))
+        self.reset()
+        setattr(self, attrib, down_val)
         price_down = self.price()
 
         self.reset()
 
-        return (price_up - price_down) / (2 * epsilon)
+        return (price_up - price_down) / (up_val - down_val)
 
-    def delta(self, epsilon=0.1, multiplicative=True):
+    def delta(self, epsilon=0.02, multiplicative=True):
         return self.firstOrder("S0", epsilon, multiplicative)
 
-    def vega(self, epsilon=0.1):
-        return self.firstOrder("sigma", epsilon)
+    def vega(self, epsilon=0.02, multiplicative=True):
+        return self.firstOrder("sigma", epsilon, multiplicative)
 
-    def theta(self, epsilon=0.1):
-        return self.firstOrder("time", epsilon)
+    def theta(self, epsilon=0.02, multiplicative=True):
+        return self.firstOrder("time", epsilon, multiplicative)
 
-    def rho(self, epsilon=0.1):
-        return self.firstOrder("rate", epsilon)
+    def rho(self, epsilon=0.02, multiplicative=True):
+        return self.firstOrder("rate", epsilon, multiplicative)
 
 
 class MonteCarloConvergence:
@@ -138,7 +139,9 @@ class MonteCarloConvergence:
     def toleranceAchievement(self):
         prices = self.getPrices()
         for i, nb_iters in enumerate(self.nb_iters_list):
-            if np.abs(prices[i] - prices[-1]) < self.tolerance:
+            if i == 0:
+                continue
+            if np.abs(prices[i] - prices[i-1]) < self.tolerance:
                 return nb_iters
 
 
@@ -152,10 +155,10 @@ if __name__ == "__main__":
     # mc_convergence.plot(overlay_closed_form=True)
     # print(mc_convergence.toleranceAchievement())
 
-    # american_option = AmericanOptionMonteCarlo(95, 0, 100, 0.06, "call", 0.3, nb_steps=1000, expiry=1, nb_iters=100000)
+    # american_option = AmericanOptionMC(95, 0, 100, 0.06, "call", 0.3, nb_steps=1000, expiry=1, nb_iters=100000)
     # print(american_option.price())
     #
     # american_option_convergence = MonteCarloConvergence(95, 0, 100, 0.06, "call", 0.3, 1, range(1, 100000, 500),
-    #                                                    klass=AmericanOptionMonteCarlo)
+    #                                                    klass=AmericanOptionMC)
     # american_option_convergence.plot(overlay_closed_form=True)
     # print(american_option_convergence.toleranceAchievement())
