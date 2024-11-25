@@ -7,14 +7,80 @@ import numpy.random as npr
 from scipy.stats import norm
 
 
-class MonteCarlo(object):
+class MonteCarloMixin(object):
     @classmethod
     def setSeed(cls, seed):
         """There is no direct way to unset this? """
         npr.seed(seed)
 
+    def reset(self):
+        self.initDependencies()
 
-class MonteCarloPricing(MonteCarlo):
+
+    def secondOrder(self, attrib, epsilon=0.02, multiplicative=True):
+        original_val = getattr(self, attrib)
+        if multiplicative:
+            assert original_val, "original value cannot be zero if the mode is multiplicative"
+
+        up_val = (original_val * (1 + epsilon)) if multiplicative else (original_val + epsilon)
+        down_val = (original_val * (1 - epsilon)) if multiplicative else (original_val - epsilon)
+        mid_val = original_val
+
+        # Reset and compute prices
+        self.reset()
+        setattr(self, attrib, up_val)
+        price_up = self.price()
+
+        self.reset()
+        setattr(self, attrib, down_val)
+        price_down = self.price()
+
+        self.reset()
+        setattr(self, attrib, mid_val)
+        price_mid = self.price()
+
+        diff = (up_val - down_val)/2
+        # Second derivative approximation: f''(x) ≈ (f(x+ε) - 2*f(x) + f(x-ε)) / ε²
+        # it is (delta_up - delta_down)/ diff, which leads to above formula
+        return (price_up - 2 * price_mid + price_down) / ( diff ** 2)
+
+    def gamma(self, epsilon=0.02, multiplicative=True):
+        return self.secondOrder("S0", epsilon, multiplicative)
+
+    def firstOrder(self, attrib, epsilon=0.02, multiplicative=True):
+
+        original_val = getattr(self, attrib)
+        if multiplicative:
+            assert original_val, "original value cannot be zero if the mode is multiplicative"
+        up_val = (original_val * (1 + epsilon)) if multiplicative else (original_val + epsilon)
+        down_val = (original_val * (1 - epsilon)) if multiplicative else (original_val - epsilon)
+        self.reset()
+
+        setattr(self, attrib, up_val)
+        price_up = self.price()
+
+        self.reset()
+        setattr(self, attrib, down_val)
+        price_down = self.price()
+
+        self.reset()
+
+        return (price_up - price_down) / (up_val - down_val)
+
+    def delta(self, epsilon=0.02, multiplicative=True):
+        return self.firstOrder("S0", epsilon, multiplicative)
+
+    def vega(self, epsilon=0.02, multiplicative=True):
+        return self.firstOrder("sigma", epsilon, multiplicative)
+
+    def theta(self, epsilon=0.02, multiplicative=True):
+        return self.firstOrder("time", epsilon, multiplicative)
+
+    def rho(self, epsilon=0.02, multiplicative=True):
+        return self.firstOrder("rate", epsilon, multiplicative)
+
+
+class MonteCarloGBM(MonteCarloMixin):
     def __init__(self, strike, time, S0, rate, option_type, sigma, expiry, nb_iters=100000):
         self.strike = strike
         self.time = time
@@ -55,45 +121,11 @@ class MonteCarloPricing(MonteCarlo):
     def price(self):
         return self.discount() * np.mean(self.terminalPayoffs())
 
-    def reset(self):
-        self.initDependencies()
-
-    def firstOrder(self, attrib, epsilon=0.02, multiplicative=True):
-
-        original_val = getattr(self, attrib)
-        if multiplicative:
-            assert original_val, "original value cannot be zero if the mode is multiplicative"
-        up_val = (original_val * (1 + epsilon)) if multiplicative else (original_val + epsilon)
-        down_val = (original_val * (1 - epsilon)) if multiplicative else (original_val - epsilon)
-        self.reset()
-
-        setattr(self, attrib, up_val)
-        price_up = self.price()
-
-        self.reset()
-        setattr(self, attrib, down_val)
-        price_down = self.price()
-
-        self.reset()
-
-        return (price_up - price_down) / (up_val - down_val)
-
-    def delta(self, epsilon=0.02, multiplicative=True):
-        return self.firstOrder("S0", epsilon, multiplicative)
-
-    def vega(self, epsilon=0.02, multiplicative=True):
-        return self.firstOrder("sigma", epsilon, multiplicative)
-
-    def theta(self, epsilon=0.02, multiplicative=True):
-        return self.firstOrder("time", epsilon, multiplicative)
-
-    def rho(self, epsilon=0.02, multiplicative=True):
-        return self.firstOrder("rate", epsilon, multiplicative)
 
 
 class MonteCarloConvergence:
     def __init__(self, strike, time, S0, rate, option_type, sigma, expiry, nb_iters_list, tolerance=0.01,
-                 klass=MonteCarloPricing, **kw):
+                 klass=MonteCarloGBM, **kw):
         self.strike = strike
         self.time = time
         self.S0 = S0
@@ -146,8 +178,8 @@ class MonteCarloConvergence:
 
 
 if __name__ == "__main__":
-    MonteCarlo.setSeed(42)
-    mc = MonteCarloPricing(95, 0, 100, 0.06, "call", 0.3, 1)
+    MonteCarloMixin.setSeed(42)
+    mc = MonteCarloGBM(95, 0, 100, 0.06, "call", 0.3, 1)
 
     print(mc.price())
 
@@ -155,10 +187,10 @@ if __name__ == "__main__":
     # mc_convergence.plot(overlay_closed_form=True)
     # print(mc_convergence.toleranceAchievement())
 
-    # american_option = AmericanOptionMC(95, 0, 100, 0.06, "call", 0.3, nb_steps=1000, expiry=1, nb_iters=100000)
+    # american_option = AmericanOptionGBM(95, 0, 100, 0.06, "call", 0.3, nb_steps=1000, expiry=1, nb_iters=100000)
     # print(american_option.price())
     #
     # american_option_convergence = MonteCarloConvergence(95, 0, 100, 0.06, "call", 0.3, 1, range(1, 100000, 500),
-    #                                                    klass=AmericanOptionMC)
+    #                                                    klass=AmericanOptionGBM)
     # american_option_convergence.plot(overlay_closed_form=True)
     # print(american_option_convergence.toleranceAchievement())

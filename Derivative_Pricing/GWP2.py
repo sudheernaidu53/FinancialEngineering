@@ -1,8 +1,8 @@
 from GWP1 import docstringDecorator, GWP1
 import pandas as pd
 from MonteCarlo import MonteCarloConvergence
-from EOption import EuropeanOptionBinomial, EuropeanOptionTrinomial, EuropeanOptionMC, EuropeanOptionBS
-from AOption import AmericanOptionBinomial, AmericanOptionTrinomial, AmericanOptionMC
+from EOption import EuropeanOptionBinomial, EuropeanOptionTrinomial, EuropeanOptionGBM, EuropeanOptionBS
+from AOption import AmericanOptionBinomial, AmericanOptionTrinomial, AmericanOptionGBM
 from exotics import UpAndOutEuropeanMC
 from tabulate import tabulate
 from IPython.display import display
@@ -134,9 +134,9 @@ class GWP2(GWP1):
         :return:
         """
         bin_call, bin_put = self.callAndPutPrice()
-        mc_call_obj = EuropeanOptionMC(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
+        mc_call_obj = EuropeanOptionGBM(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
                                        option_type="call")
-        mc_put_obj = EuropeanOptionMC(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
+        mc_put_obj = EuropeanOptionGBM(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
                                       option_type="put")
         mc_call, mc_put = mc_call_obj.price(), mc_put_obj.price()
         df = pd.DataFrame(
@@ -191,13 +191,13 @@ class GWP2(GWP1):
 
     def EuropeanCallConvergence(self):
         european_option_convergence = MonteCarloConvergence(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
-                                                            option_type="call", klass=EuropeanOptionMC, nb_iters_list=range(1, 100000, 500))
+                                                            option_type="call", klass=EuropeanOptionGBM, nb_iters_list=range(1, 100000, 500))
         european_option_convergence.plot(overlay_closed_form=False)
         print(european_option_convergence.toleranceAchievement())
 
     def AmericanMCConvergence(self):
         american_option_convergence = MonteCarloConvergence(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
-                                                            option_type="put", klass=AmericanOptionMC, nb_iters_list=range(1, 100000, 500))
+                                                            option_type="put", klass=AmericanOptionGBM, nb_iters_list=range(1, 100000, 500))
         american_option_convergence.plot(overlay_closed_form=False)
         print(american_option_convergence.toleranceAchievement())
 
@@ -222,9 +222,9 @@ class GWP2(GWP1):
         sections a and b of Q7 as well).
         """
         bin_call, bin_put = self.callAndPutPrice(klass=AmericanOptionBinomial)
-        mc_call_obj = AmericanOptionMC(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
+        mc_call_obj = AmericanOptionGBM(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
                                        option_type="call")
-        mc_put_obj = AmericanOptionMC(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
+        mc_put_obj = AmericanOptionGBM(S0=self.S0, strike=self.K, time=0, expiry=self.T, rate=self.r, sigma=self.sigma,
                                       option_type="put")
         mc_call, mc_put = mc_call_obj.price(), mc_put_obj.price()
         df = pd.DataFrame(

@@ -1,11 +1,11 @@
 """Exotic Options
 1. Barrier Options. Up-and-Out Option
 """
-from MonteCarlo import MonteCarloPricing
+from MonteCarlo import MonteCarloGBM
 import numpy as np
 import numpy.random as npr
 
-class BarrierOptions(MonteCarloPricing):
+class BarrierOptions(MonteCarloGBM):
     def __init__(self, strike, time, S0, rate, option_type, sigma, expiry, barrier, nb_iters=100000, nb_steps=50):
         self.barrier = barrier
         self.nb_steps = nb_steps

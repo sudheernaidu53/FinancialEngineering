@@ -15,8 +15,8 @@ class GradedQuizM4(object):
         time = 0
         expiry = 5 / 12
         option_type = "call"
-        EuropeanOptionMC.setSeed(42)
-        mc = EuropeanOptionMC(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
+        EuropeanOptionGBM.setSeed(42)
+        mc = EuropeanOptionGBM(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry, nb_iters=nb_iters)
         bs = EuropeanOptionBS(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry)
@@ -33,8 +33,8 @@ class GradedQuizM4(object):
         time = 0
         expiry = 4 / 12
         option_type = "put"
-        EuropeanOptionMC.setSeed(42)
-        mc = EuropeanOptionMC(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
+        EuropeanOptionGBM.setSeed(42)
+        mc = EuropeanOptionGBM(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry, nb_iters=nb_iters)
         bs = EuropeanOptionBS(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry)
@@ -83,8 +83,8 @@ class GradedQuizM4(object):
         time = 0
         expiry = 5 / 12
         option_type = "call"
-        EuropeanOptionMC.setSeed(42)
-        mc = EuropeanOptionMC(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
+        EuropeanOptionGBM.setSeed(42)
+        mc = EuropeanOptionGBM(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry)
         bs = EuropeanOptionBS(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry)
@@ -116,8 +116,8 @@ class GradedQuizM4(object):
         time = 0
         expiry = 5 / 12
         option_type = "put"
-        EuropeanOptionMC.setSeed(42)
-        mc = EuropeanOptionMC(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
+        EuropeanOptionGBM.setSeed(42)
+        mc = EuropeanOptionGBM(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry)
         bs = EuropeanOptionBS(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry)
@@ -151,8 +151,8 @@ class GradedQuizM4(object):
         time = 0
         expiry = 18 / 12
         option_type = "put"
-        EuropeanOptionMC.setSeed(42)
-        mc = EuropeanOptionMC(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
+        EuropeanOptionGBM.setSeed(42)
+        mc = EuropeanOptionGBM(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry, nb_iters=5000)
         bs = EuropeanOptionBS(strike=strike, time=time, S0=S0, rate=rate, option_type=option_type, sigma=sigma,
                               expiry=expiry)

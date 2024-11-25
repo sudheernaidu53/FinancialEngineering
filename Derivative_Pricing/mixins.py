@@ -1,4 +1,4 @@
-
+import numpy as np
 
 class OptionMixin(object):
 
@@ -8,6 +8,6 @@ class OptionMixin(object):
 
     def _payoff(self, stock_price, strike=None):
         if self.option_type == 'call':
-            return max(0, stock_price - self.strike)
+            return np.maximum(0, stock_price - self.strike)
         elif self.option_type == 'put':
-            return max(0, self.strike - stock_price)
+            return np.maximum(0, self.strike - stock_price)

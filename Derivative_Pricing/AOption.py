@@ -6,7 +6,9 @@ from binomialPricing import (
 import numpy as np
 import numpy.random as npr
 from trinomialPricing import TrinomialOptionModel
-from MonteCarlo import MonteCarloPricing
+from MonteCarlo import MonteCarloGBM
+from heston import HestonModel
+from merton import MertonModel
 
 
 class AmericanMixin:
@@ -14,37 +16,16 @@ class AmericanMixin:
         opt_price = super().optionPriceAtNode(step, d_index)
         return max(opt_price, self._payoff(self.underlying_price[step, d_index]))
 
+
 class AmericanOptionBinomial(AmericanMixin, BinomialOptionModel):
     pass
+
 
 class AmericanOptionTrinomial(AmericanMixin, TrinomialOptionModel):
     pass
 
-class AmericanOptionMC(MonteCarloPricing):
-    def __init__(self, strike, time, S0, rate, option_type, sigma, expiry, nb_iters=100000, nb_steps=50):
-        self.nb_steps = nb_steps
-        super().__init__(strike, time, S0, rate, option_type, sigma, expiry, nb_iters)
 
-
-    def initDependencies(self):
-        super().initDependencies()
-        self.dt = self.time_to_maturity / self.nb_steps  # Time step
-        self.discount_factor = np.exp(-self.rate * self.dt)
-        self.vol = self.sigma * np.sqrt(self.dt)
-        self.S = None
-        self.payoff = None
-
-    def simulatedStockPrices(self):
-        if self.S is not None:
-            return self.S
-        self.S = np.zeros((self.nb_steps + 1, self.nb_iters))
-        self.S[0] = self.S0
-        for t in range(1, self.nb_steps + 1):
-            z = npr.randn(self.nb_iters)
-            self.S[t] = self.S[t - 1] * np.exp(self.drift * self.dt + self.vol * z)
-        return self.S
-
-
+class AmericanMCMixin:
     def __SimplePayoff(self, S=None):
         """don't use. has bugs.
         treats each path as independent.
@@ -55,7 +36,7 @@ class AmericanOptionMC(MonteCarloPricing):
         3. Stock price paths do not linearly correspond to future payoffs. For instance, when a call option is deep out of the money, the future payoff is likely zero regardless of slight changes in the stock price.
         4. By fitting to multiple paths' payoffs at later steps, the regression approximates a broader future scenario for each stock price level, providing a better decision criterion for early exercise.
         """
-        S = self.simulatedStockPrices() if S is None else S
+        S = self.stockSimulation() if S is None else S
         if self.payoff is not None:
             return self.payoff
         self.payoff = np.zeros_like(S)
@@ -74,7 +55,7 @@ class AmericanOptionMC(MonteCarloPricing):
     def longstaffSchwartzPayoff(self, S=None):
         if self.payoff is not None:
             return self.payoff
-        S = self.simulatedStockPrices() if S is None else S
+        S = self.stockSimulation() if S is None else S
 
         payoffs = self._payoff(S[-1], self.strike)
         cashflows = payoffs.copy()
@@ -86,8 +67,8 @@ class AmericanOptionMC(MonteCarloPricing):
             # print("in the money paths for time step ", t, ":", in_the_money_paths)
 
             # regression
-            X = S[ t, in_the_money_paths]
-            Y = self.discount_factor* cashflows[in_the_money_paths]
+            X = S[t, in_the_money_paths]
+            Y = self.discount_factor * cashflows[in_the_money_paths]
 
             if len(X) > 0:
                 regression = np.polyfit(X, Y, 2)
@@ -98,7 +79,7 @@ class AmericanOptionMC(MonteCarloPricing):
 
                 cashflows[in_the_money_paths[exercise]] = intrinsic_value[exercise]
 
-            cashflows = self.discount_factor*cashflows
+            cashflows = self.discount_factor * cashflows
 
         self.payoff = cashflows
         return self.payoff
@@ -114,13 +95,47 @@ class AmericanOptionMC(MonteCarloPricing):
         down_val = (self.sigma * (1 - epsilon)) if multiplicative else (self.sigma - epsilon)
 
         option_up = self.__class__(self.strike, self.time, self.S0, self.rate, self.option_type, up_val, self.expiry)
-        option_down = self.__class__(self.strike, self.time, self.S0, self.rate, self.option_type, down_val, self.expiry)
+        option_down = self.__class__(self.strike, self.time, self.S0, self.rate, self.option_type, down_val,
+                                     self.expiry)
 
         return (option_up.price() - option_down.price()) / (up_val - down_val)
 
+
+class AmericanOptionGBM(AmericanMCMixin, MonteCarloGBM):
+    def __init__(self, strike, time, S0, rate, option_type, sigma, expiry, nb_iters=100000, nb_steps=50):
+        self.nb_steps = nb_steps
+        super().__init__(strike, time, S0, rate, option_type, sigma, expiry, nb_iters)
+
+    def initDependencies(self):
+        super().initDependencies()
+        self.dt = self.time_to_maturity / self.nb_steps  # Time step
+        self.discount_factor = np.exp(-self.rate * self.dt)
+        self.vol = self.sigma * np.sqrt(self.dt)
+        self.S = None
+        self.payoff = None
+
+    def stockSimulation(self):
+        if self.S is not None:
+            return self.S
+        self.S = np.zeros((self.nb_steps + 1, self.nb_iters))
+        self.S[0] = self.S0
+        for t in range(1, self.nb_steps + 1):
+            z = npr.randn(self.nb_iters)
+            self.S[t] = self.S[t - 1] * np.exp(self.drift * self.dt + self.vol * z)
+        return self.S
+
+
+class AmericanOptionHeston(AmericanMCMixin, HestonModel):
+    pass
+
+
+class AmericanOptionMerton(AmericanMCMixin, MertonModel):
+    pass
+
+
 if __name__ == "__main__":
     # a = AmericanOptionBinomial(45, 5, 5, 45, 0., 'call', 1.2, 1/1.2)
-    a = AmericanOptionBinomial(45, 50, 50, 45, 0., 'put', 1.5, 1/1.5)
+    a = AmericanOptionBinomial(45, 50, 50, 45, 0., 'put', 1.5, 1 / 1.5)
     a.calculateOptionPrice()
     print(a.underlying_price)
     print("Option Price: ", a.getOptionPrice())
