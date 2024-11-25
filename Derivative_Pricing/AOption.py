@@ -60,7 +60,7 @@ class AmericanMCMixin:
         payoffs = self._payoff(S[-1], self.strike)
         cashflows = payoffs.copy()
 
-        for t in range(self.nb_steps - 1, -1, -1):
+        for t in range(self.nb_steps - 1, 0, -1):
             # in-the-money paths
             in_the_money = S[t] < self.strike if (self.option_type == "put") else S[t] > self.strike
             in_the_money_paths = np.where(in_the_money)[0]
