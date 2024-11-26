@@ -6,7 +6,7 @@ from EOption import EuropeanOptionBinomial, EuropeanOptionTrinomial
 import numpy as np
 # import matplotlib.pyplot as plt
 
-PRINT_DOC_STRING = False
+PRINT_DOC_STRING = True
 def docstringDecorator(func):
     def wrapper(*args, **kwargs):
         if PRINT_DOC_STRING:

@@ -5,14 +5,17 @@ from MonteCarlo import MonteCarloMixin
 from mixins import OptionMixin
 from decorators import timer
 import logging
+
 logger = logging.getLogger(__name__)
 
 ENABLE_TIMER = True
+
 
 class HestonModel(MonteCarloMixin, OptionMixin):
     """
     np.float is deprecated for default float. just use that for now
     """
+
     def __init__(self, S0, strike, time_to_maturity, rate, vov, rho, v0, kappa, theta, option_type, nb_steps=10000,
                  nb_iters=10000):
         self.S0 = S0
@@ -116,6 +119,41 @@ class HestonModel(MonteCarloMixin, OptionMixin):
         self.stockSimulation()
         payoff = self._payoff(self.stock[-1, :], self.strike)
         return np.exp(-self.rate * self.time_to_maturity) * np.mean(payoff)
+
+    # def delta(self, epsilon=0.01, multiplicative=False):
+    #     """There seems to be a bug in generic delta.. TODO.
+    #     so manually calculate delta"""
+    #     up_val = (self.S0 * (1 + epsilon)) if multiplicative else (self.S0 + epsilon)
+    #     down_val = (self.S0 * (1 - epsilon)) if multiplicative else (self.S0 - epsilon)
+    #     print(up_val, down_val)
+    #     kw = dict(strike=self.strike, time_to_maturity=self.time_to_maturity, rate=self.rate, vov=self.vov,
+    #               rho=self.rho, v0=self.v0, kappa=self.kappa, theta=self.theta, option_type=self.option_type,
+    #               nb_steps=self.nb_steps, nb_iters=self.nb_iters)
+    #     option_up = self.__class__(S0 = up_val, **kw)
+    #     option_down = self.__class__(S0=down_val, **kw)
+    #     return (option_up.price() - option_down.price()) / (up_val - down_val)
+    #
+    # def gamma(self, epsilon=0.01, multiplicative=False):
+    #     """
+    #     There seems to be a bug in generic gamma.. TODO.
+    #     so manually calculate gamma
+    #     :param epsilon:
+    #     :param multiplicative:
+    #     :return:
+    #     """
+    #     up_val = (self.S0 * (1 + epsilon)) if multiplicative else (self.S0 + epsilon)
+    #     mid_val = self.S0
+    #     down_val = (self.S0 * (1 - epsilon)) if multiplicative else (self.S0 - epsilon)
+    #     print(up_val, mid_val, down_val)
+    #     kw = dict(strike=self.strike, time_to_maturity=self.time_to_maturity, rate=self.rate, vov=self.vov,
+    #               rho=self.rho, v0=self.v0, kappa=self.kappa, theta=self.theta, option_type=self.option_type,
+    #               nb_steps=self.nb_steps, nb_iters=self.nb_iters)
+    #     option_up = self.__class__(S0=up_val, **kw)
+    #     option_mid = self.__class__(S0=mid_val, **kw)
+    #     option_down = self.__class__(S0=down_val, **kw)
+    #     to_div = (up_val - down_val)/2
+    #     return (option_up.price() - 2 * option_mid.price() + option_down.price()) / (to_div**2)
+
 
 
 if __name__ == '__main__':

@@ -17,7 +17,7 @@ class MonteCarloMixin(object):
         self.initDependencies()
 
 
-    def secondOrder(self, attrib, epsilon=0.02, multiplicative=True):
+    def secondOrder(self, attrib, epsilon=0.01, multiplicative=False):
         original_val = getattr(self, attrib)
         if multiplicative:
             assert original_val, "original value cannot be zero if the mode is multiplicative"
@@ -44,10 +44,10 @@ class MonteCarloMixin(object):
         # it is (delta_up - delta_down)/ diff, which leads to above formula
         return (price_up - 2 * price_mid + price_down) / ( diff ** 2)
 
-    def gamma(self, epsilon=0.02, multiplicative=True):
+    def gamma(self, epsilon=0.01, multiplicative=False):
         return self.secondOrder("S0", epsilon, multiplicative)
 
-    def firstOrder(self, attrib, epsilon=0.02, multiplicative=True):
+    def firstOrder(self, attrib, epsilon=0.01, multiplicative=False):
 
         original_val = getattr(self, attrib)
         if multiplicative:
@@ -67,16 +67,16 @@ class MonteCarloMixin(object):
 
         return (price_up - price_down) / (up_val - down_val)
 
-    def delta(self, epsilon=0.02, multiplicative=True):
+    def delta(self, epsilon=0.01, multiplicative=False):
         return self.firstOrder("S0", epsilon, multiplicative)
 
-    def vega(self, epsilon=0.02, multiplicative=True):
+    def vega(self, epsilon=0.01, multiplicative=False):
         return self.firstOrder("sigma", epsilon, multiplicative)
 
-    def theta(self, epsilon=0.02, multiplicative=True):
+    def theta(self, epsilon=0.01, multiplicative=False):
         return self.firstOrder("time", epsilon, multiplicative)
 
-    def rho(self, epsilon=0.02, multiplicative=True):
+    def rho(self, epsilon=0.01, multiplicative=False):
         return self.firstOrder("rate", epsilon, multiplicative)
 
 

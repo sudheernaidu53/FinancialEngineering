@@ -88,7 +88,7 @@ class AmericanMCMixin:
         t0_price_vector = self.longstaffSchwartzPayoff()
         return np.mean(t0_price_vector)
 
-    def vega(self, epsilon=0.02, multiplicative=True):
+    def vega(self, epsilon=0.01, multiplicative=False):
         """There seems to be a bug in generic vega.. TODO.
         so manually calculate vega"""
         up_val = (self.sigma * (1 + epsilon)) if multiplicative else (self.sigma + epsilon)

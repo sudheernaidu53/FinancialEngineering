@@ -16,10 +16,10 @@ class MertonModel(OptionMixin, MonteCarloMixin):
     """
     def __init__(self,
                  strike, time, S0, rate, option_type, sigma, expiry,
-                 lambda_, mu, delta, nb_steps, nb_iters):
+                 lambda_, mu, delta_, nb_steps, nb_iters):
         self.lambda_ = lambda_
         self.mu = mu
-        self.delta = delta
+        self.delta_ = delta_
         self.rate = rate
         self.sigma = sigma
         self.expiry = expiry
@@ -42,7 +42,7 @@ class MertonModel(OptionMixin, MonteCarloMixin):
         
 
     def calculate_rj(self):
-        self.rj = self.lambda_ * (np.exp(self.mu + 0.5 * self.delta**2) - 1)
+        self.rj = self.lambda_ * (np.exp(self.mu + 0.5 * self.delta_**2) - 1)
 
     def genRandomNumbers(self):
         if self.z1 is not None:
@@ -61,7 +61,7 @@ class MertonModel(OptionMixin, MonteCarloMixin):
         for t in range(1, self.nb_steps + 1):
             self.stock[t] = self.stock[t - 1] * (
                     np.exp((self.rate - self.rj - 0.5 * self.sigma**2) * self.dt + self.sigma * np.sqrt(self.dt) * self.z1[t])
-                    + (np.exp(self.mu + self.delta * self.z2[t]) - 1) * self.y[t]
+                    + (np.exp(self.mu + self.delta_ * self.z2[t]) - 1) * self.y[t]
             )
             self.stock[t] = np.maximum(
                 self.stock[t], 0.00001
@@ -77,7 +77,7 @@ class MertonModel(OptionMixin, MonteCarloMixin):
 if __name__ == "__main__":
     lamb = 0.75  # Lambda of the model
     mu = -0.6  # Mu
-    delta = 0.25  # Delta
+    delta_ = 0.25  # Delta
 
     r = 0.05  # Risk-free rate
     sigma = 0.2  # Volatility
@@ -90,5 +90,5 @@ if __name__ == "__main__":
     t = 0
 
     merton = MertonModel(strike=strike, time=t, S0=S0, rate=r, option_type="call", sigma=sigma, expiry=T,
-                         lambda_=lamb, mu=mu, delta=delta, nb_steps=M, nb_iters=Ite)
+                         lambda_=lamb, mu=mu, delta_=delta_, nb_steps=M, nb_iters=Ite)
     print(merton.price())
