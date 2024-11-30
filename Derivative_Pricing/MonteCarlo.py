@@ -39,10 +39,10 @@ class MonteCarloMixin(object):
         setattr(self, attrib, mid_val)
         price_mid = self.price()
 
-        diff = (up_val - down_val)/2
+
         # Second derivative approximation: f''(x) ≈ (f(x+ε) - 2*f(x) + f(x-ε)) / ε²
         # it is (delta_up - delta_down)/ diff, which leads to above formula
-        return (price_up - 2 * price_mid + price_down) / ( diff ** 2)
+        return (price_up - 2 * price_mid + price_down) / ( epsilon ** 2) # should epsilon be replaced by (up_val - down_val)/2 for multiplicative case
 
     def gamma(self, epsilon=0.01, multiplicative=False):
         return self.secondOrder("S0", epsilon, multiplicative)
@@ -65,7 +65,7 @@ class MonteCarloMixin(object):
 
         self.reset()
 
-        return (price_up - price_down) / (up_val - down_val)
+        return (price_up - price_down) / (2*epsilon)
 
     def delta(self, epsilon=0.01, multiplicative=False):
         return self.firstOrder("S0", epsilon, multiplicative)

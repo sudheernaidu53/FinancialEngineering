@@ -7,16 +7,15 @@ from mixins import OptionMixin
 from MonteCarlo import MonteCarloMixin
 
 
-
 class MertonModel(OptionMixin, MonteCarloMixin):
     """
     TODO 1. see what happens when we change the poisson distribution. mu and lambda. look at the stock returns log distribution
     TODO 2. the paths visualization
     TODO 3. compare with closed form, heston. prices as well as the graphs.
     """
-    def __init__(self,
-                 strike, time, S0, rate, option_type, sigma, expiry,
-                 lambda_, mu, delta_, nb_steps, nb_iters):
+
+    def __init__(self, strike, time, S0, rate, option_type, sigma, expiry,
+                 lambda_, mu, delta_, nb_steps, nb_iters, seed=42):
         self.lambda_ = lambda_
         self.mu = mu
         self.delta_ = delta_
@@ -29,28 +28,32 @@ class MertonModel(OptionMixin, MonteCarloMixin):
         self.nb_iters = nb_iters
         self.time = time
         self.option_type = option_type
+        self._initRandoms()
+        self.seed = seed
         self.initDependencies()
-        
-    def initDependencies(self):
-        self.time_to_maturity = self.expiry - self.time
-        self.dt = self.time_to_maturity / self.nb_steps
+
+    def _initRandoms(self):
         self.z1 = None
         self.z2 = None
         self.y = None
         self.rj = None
+
+    def initDependencies(self):
+        self.time_to_maturity = self.expiry - self.time
+        self.dt = self.time_to_maturity / self.nb_steps
         self.stock = None
-        
 
     def calculate_rj(self):
-        self.rj = self.lambda_ * (np.exp(self.mu + 0.5 * self.delta_**2) - 1)
+        self.rj = self.lambda_ * (np.exp(self.mu + 0.5 * self.delta_ ** 2) - 1)
 
     def genRandomNumbers(self):
         if self.z1 is not None:
-            return 
+            return
+        self.setSeed(self.seed)
         self.z1 = np.random.standard_normal((self.nb_steps + 1, self.nb_iters))
         self.z2 = np.random.standard_normal((self.nb_steps + 1, self.nb_iters))
         self.y = np.random.poisson(self.lambda_ * self.dt, (self.nb_steps + 1, self.nb_iters))
-    
+
     def simulate(self):
         if self.stock is not None:
             return self.stock
@@ -60,12 +63,13 @@ class MertonModel(OptionMixin, MonteCarloMixin):
         self.stock[0] = self.S0
         for t in range(1, self.nb_steps + 1):
             self.stock[t] = self.stock[t - 1] * (
-                    np.exp((self.rate - self.rj - 0.5 * self.sigma**2) * self.dt + self.sigma * np.sqrt(self.dt) * self.z1[t])
+                    np.exp((self.rate - self.rj - 0.5 * self.sigma ** 2) * self.dt + self.sigma * np.sqrt(self.dt) *
+                           self.z1[t])
                     + (np.exp(self.mu + self.delta_ * self.z2[t]) - 1) * self.y[t]
             )
             self.stock[t] = np.maximum(
                 self.stock[t], 0.00001
-            ) 
+            )
         return self.stock
 
     def price(self):

@@ -3,7 +3,7 @@ import pandas as pd
 from MonteCarlo import MonteCarloConvergence
 from EOption import EuropeanOptionBinomial, EuropeanOptionTrinomial, EuropeanOptionGBM, EuropeanOptionBS
 from AOption import AmericanOptionBinomial, AmericanOptionTrinomial, AmericanOptionGBM
-from exotics import UpAndOutEuropeanMC
+from exotics import UpAndOutEuropeanGBM
 from tabulate import tabulate
 from IPython.display import display
 
@@ -369,10 +369,10 @@ class GWP2(GWP1):
         barrier = 141
         K = S0
 
-        uao = UpAndOutEuropeanMC(S0=S0, rate=rate, sigma=sigma, time=0, expiry=T, barrier=barrier, strike=K, option_type="call")
+        uao = UpAndOutEuropeanGBM(S0=S0, rate=rate, sigma=sigma, time=0, expiry=T, barrier=barrier, strike=K, option_type="call")
         # print("price of Up and out European style call option is {:.2f}".format(uao.price()))
 
-        uao_put = UpAndOutEuropeanMC(S0=S0, rate=rate, sigma=sigma, time=0, expiry=T, barrier=barrier, strike=K, option_type="put")
+        uao_put = UpAndOutEuropeanGBM(S0=S0, rate=rate, sigma=sigma, time=0, expiry=T, barrier=barrier, strike=K, option_type="put")
         # print("price of Up and out European style put option is {:.2f}".format(uao_put.price()))
 
         bs_call = EuropeanOptionBS(S0=S0, strike=K, time=0, expiry=T, rate=rate, sigma=sigma, option_type="call")

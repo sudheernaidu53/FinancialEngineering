@@ -17,6 +17,7 @@ class HestonModel(MonteCarloMixin, OptionMixin):
     """
 
     def __init__(self, S0, strike, time_to_maturity, rate, vov, rho, v0, kappa, theta, option_type, nb_steps=10000,
+                 seed=42,
                  nb_iters=10000):
         self.S0 = S0
         self.strike = strike
@@ -34,11 +35,12 @@ class HestonModel(MonteCarloMixin, OptionMixin):
         self.vol_random_index = 1
         self.stock_random_index = 0
         self.initDependencies()
+        self.seed = seed
+        self.cho_matrix = None
+        self.random_num_arr = None
 
     def initDependencies(self):
-        self.cho_matrix = None
         self.vol = None
-        self.random_num_arr = None
         self.stock = None
         self.dt = self.time_to_maturity / self.nb_steps  # Time step
         self.sq_dt = np.sqrt(self.dt)
@@ -58,6 +60,7 @@ class HestonModel(MonteCarloMixin, OptionMixin):
     def random_number_gen(self):
         if self.random_num_arr is not None:
             return self.random_num_arr
+        self.setSeed(self.seed)
         self.random_num_arr = np.random.standard_normal((2, self.nb_steps + 1, self.nb_iters))
         return self.random_num_arr
 
@@ -78,7 +81,7 @@ class HestonModel(MonteCarloMixin, OptionMixin):
         return self.vol
 
     @timer(ENABLE_TIMER, logger)
-    def stockSimulation(self):
+    def simulate(self):
         if self.stock is not None:
             return self.stock
         self.volSimulation()
@@ -92,11 +95,12 @@ class HestonModel(MonteCarloMixin, OptionMixin):
                 (self.rate - self.vol[t - 1] / 2) * self.dt
                 + np.sqrt(self.vol[t]) * ran[self.stock_random_index] * self.sq_dt
             )
+        return self.stock
 
     @timer(ENABLE_TIMER, logger)
     def plot_paths(self, n):
         self.volSimulation()
-        self.stockSimulation()
+        self.simulate()
         fig = plt.figure(figsize=(18, 6))
         ax1 = fig.add_subplot(121)
         ax2 = fig.add_subplot(122)
@@ -116,7 +120,7 @@ class HestonModel(MonteCarloMixin, OptionMixin):
 
     @timer(ENABLE_TIMER, logger)
     def price(self):
-        self.stockSimulation()
+        self.simulate()
         payoff = self._payoff(self.stock[-1, :], self.strike)
         return np.exp(-self.rate * self.time_to_maturity) * np.mean(payoff)
 

@@ -26,7 +26,14 @@ class AmericanOptionTrinomial(AmericanMixin, TrinomialOptionModel):
 
 
 class AmericanMCMixin:
-    def __SimplePayoff(self, S=None):
+    def initDependencies(self):
+        super().initDependencies()
+        self.payoff = None
+        self.dt = self.time_to_maturity / self.nb_steps  # Time step
+        self.discount_factor = np.exp(-self.rate * self.dt)
+
+
+    def __SimplePayoff(self, stock=None):
         """don't use. has bugs.
         treats each path as independent.
         value on a path as of some date is max(discounted value of next day payoff, exercise value)
@@ -36,15 +43,15 @@ class AmericanMCMixin:
         3. Stock price paths do not linearly correspond to future payoffs. For instance, when a call option is deep out of the money, the future payoff is likely zero regardless of slight changes in the stock price.
         4. By fitting to multiple paths' payoffs at later steps, the regression approximates a broader future scenario for each stock price level, providing a better decision criterion for early exercise.
         """
-        S = self.stockSimulation() if S is None else S
+        stock = self.simulate() if stock is None else stock
         if self.payoff is not None:
             return self.payoff
-        self.payoff = np.zeros_like(S)
+        self.payoff = np.zeros_like(stock)
         # expiry
-        self.payoff[-1] = self._payoff(S[-1], self.strike)
+        self.payoff[-1] = self._payoff(stock[-1], self.strike)
 
         for t in range(self.nb_steps - 1, -1, -1):
-            exercise_value = self._payoff(S[t], self.strike)
+            exercise_value = self._payoff(stock[t], self.strike)
             continuation_value = self.discount_factor * self.payoff[t + 1]  # discount self.payoff value to present.
 
             # max of exercise and continuation value.
@@ -52,22 +59,22 @@ class AmericanMCMixin:
             self.payoff[t] = np.where(exercise_value > continuation_value, exercise_value, continuation_value)
         return self.payoff[0]
 
-    def longstaffSchwartzPayoff(self, S=None):
+    def longstaffSchwartzPayoff(self, stock=None):
         if self.payoff is not None:
             return self.payoff
-        S = self.stockSimulation() if S is None else S
+        stock = self.simulate() if stock is None else stock
 
-        payoffs = self._payoff(S[-1], self.strike)
+        payoffs = self._payoff(stock[-1], self.strike)
         cashflows = payoffs.copy()
 
         for t in range(self.nb_steps - 1, 0, -1):
             # in-the-money paths
-            in_the_money = S[t] < self.strike if (self.option_type == "put") else S[t] > self.strike
+            in_the_money = stock[t] < self.strike if (self.option_type == "put") else stock[t] > self.strike
             in_the_money_paths = np.where(in_the_money)[0]
             # print("in the money paths for time step ", t, ":", in_the_money_paths)
 
             # regression
-            X = S[t, in_the_money_paths]
+            X = stock[t, in_the_money_paths]
             Y = self.discount_factor * cashflows[in_the_money_paths]
 
             if len(X) > 0:
@@ -108,21 +115,18 @@ class AmericanOptionGBM(AmericanMCMixin, MonteCarloGBM):
 
     def initDependencies(self):
         super().initDependencies()
-        self.dt = self.time_to_maturity / self.nb_steps  # Time step
-        self.discount_factor = np.exp(-self.rate * self.dt)
         self.vol = self.sigma * np.sqrt(self.dt)
-        self.S = None
-        self.payoff = None
+        self.stock = None
 
-    def stockSimulation(self):
-        if self.S is not None:
-            return self.S
-        self.S = np.zeros((self.nb_steps + 1, self.nb_iters))
-        self.S[0] = self.S0
+    def simulate(self):
+        if self.stock is not None:
+            return self.stock
+        self.stock = np.zeros((self.nb_steps + 1, self.nb_iters))
+        self.stock[0] = self.S0
         for t in range(1, self.nb_steps + 1):
             z = npr.randn(self.nb_iters)
-            self.S[t] = self.S[t - 1] * np.exp(self.drift * self.dt + self.vol * z)
-        return self.S
+            self.stock[t] = self.stock[t - 1] * np.exp(self.drift * self.dt + self.vol * z)
+        return self.stock
 
 
 class AmericanOptionHeston(AmericanMCMixin, HestonModel):
